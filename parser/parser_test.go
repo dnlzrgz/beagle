@@ -71,3 +71,29 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkParse1Line(b *testing.B) {
+	benchmarkParse(b, "Google,https://google.com/")
+}
+
+func BenchmarkParse50Lines(b *testing.B) {
+	in := strings.Repeat("500px,https://500px.com\n", 50)
+	benchmarkParse(b, in)
+}
+
+func BenchmarkParse100Lines(b *testing.B) {
+	in := strings.Repeat("500px,https://500px.com/\n", 100)
+	benchmarkParse(b, in)
+}
+
+func BenchmarkParse500Lines(b *testing.B) {
+	in := strings.Repeat("500px,https://500px.com\n", 500)
+	benchmarkParse(b, in)
+}
+
+func benchmarkParse(b *testing.B, input string) {
+	r := csv.NewReader(strings.NewReader(input))
+	for n := 0; n < b.N; n++ {
+		parse(r)
+	}
+}
