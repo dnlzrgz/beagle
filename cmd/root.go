@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/danielkvist/beagle/logger"
 	"github.com/danielkvist/beagle/sites"
@@ -16,15 +17,17 @@ import (
 var (
 	agent      string
 	csvFile    string
-	user       string
 	goroutines int
+	timeout    time.Duration
+	user       string
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&agent, "agent", "a", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0", "user agent")
 	rootCmd.PersistentFlags().StringVar(&csvFile, "csv", "./urls.csv", ".csv file with the URLs to parse and check")
-	rootCmd.PersistentFlags().StringVarP(&user, "user", "u", "me", "username you want to search for")
 	rootCmd.PersistentFlags().IntVarP(&goroutines, "goroutines", "g", 1, "number of goroutines")
+	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 3*time.Second, "max time to wait for a response")
+	rootCmd.PersistentFlags().StringVarP(&user, "user", "u", "me", "username you want to search for")
 }
 
 var rootCmd = &cobra.Command{
@@ -36,8 +39,12 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		if len(siteList) == 0 {
+			return fmt.Errorf(".csv file %q is empty or does not contains valid URLs", csvFile)
+		}
+
 		l := logger.New(os.Stdout, goroutines)
-		c := &http.Client{}
+		c := &http.Client{Timeout: timeout}
 
 		sema := make(chan struct{}, goroutines)
 		var wg sync.WaitGroup
