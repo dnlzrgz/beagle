@@ -1,4 +1,4 @@
-package parser
+package sites
 
 import (
 	"encoding/csv"

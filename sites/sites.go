@@ -1,15 +1,20 @@
-package parser
+package sites
 
 import (
 	"bufio"
 	"encoding/csv"
 	"io"
 	"os"
+	"strings"
 )
 
 type Site struct {
 	Name string
 	URL  string
+}
+
+func (s *Site) ReplaceURL(old string, new string) {
+	s.URL = strings.Replace(s.URL, old, new, 1)
 }
 
 func Parse(file string) ([]*Site, error) {
