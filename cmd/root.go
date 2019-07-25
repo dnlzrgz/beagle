@@ -85,6 +85,7 @@ var rootCmd = &cobra.Command{
 
 		wg.Wait()
 		l.Stop()
+
 		return nil
 	},
 }
