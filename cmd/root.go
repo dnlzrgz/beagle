@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/danielkvist/beagle/client"
 	"github.com/danielkvist/beagle/logger"
 	"github.com/danielkvist/beagle/sites"
 
@@ -17,17 +18,23 @@ import (
 var (
 	agent      string
 	csvFile    string
+	debug      bool
 	goroutines int
+	proxy      string
 	timeout    time.Duration
 	user       string
+	verbose    bool
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&agent, "agent", "a", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0", "user agent")
 	rootCmd.PersistentFlags().StringVar(&csvFile, "csv", "./urls.csv", ".csv file with the URLs to parse and check")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "prints error messages")
 	rootCmd.PersistentFlags().IntVarP(&goroutines, "goroutines", "g", 1, "number of goroutines")
+	rootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 3*time.Second, "max time to wait for a response")
 	rootCmd.PersistentFlags().StringVarP(&user, "user", "u", "me", "username you want to search for")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enables verbose mode")
 }
 
 var rootCmd = &cobra.Command{
@@ -43,9 +50,12 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf(".csv file %q is empty or does not contains valid URLs", csvFile)
 		}
 
-		l := logger.New(os.Stdout, goroutines)
-		c := &http.Client{Timeout: timeout}
+		c, err := client.New(client.WithTimeout(timeout), client.WithProxy(proxy))
+		if err != nil {
+			return fmt.Errorf("while creating a new http.Client to make the requests: %v", err)
+		}
 
+		l := logger.New(os.Stdout, goroutines)
 		sema := make(chan struct{}, goroutines)
 		var wg sync.WaitGroup
 
@@ -60,7 +70,15 @@ var rootCmd = &cobra.Command{
 				}()
 
 				site.ReplaceURL("$", user)
-				_, statusCode, _ := check(c, site.URL, agent) // FIXME:
+				_, statusCode, err := check(c, site.URL, agent)
+				if err != nil && debug {
+					log.Printf("while checking %q (%q): %v", site.Name, site.URL, err)
+				}
+
+				if !verbose && statusCode != http.StatusOK {
+					return
+				}
+
 				l.Println(formatMsg(site.Name, site.URL, statusCode))
 			}(s)
 		}
