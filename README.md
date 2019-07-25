@@ -1,5 +1,10 @@
 # Beagle
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/danielkvist/beagle)](https://goreportcard.com/report/github.com/danielkvist/beagle)
+[![GoDoc](https://godoc.org/github.com/danielkvist/beagle?status.svg)](https://godoc.org/github.com/danielkvist/beagle)
+[![Docker Pulls](https://img.shields.io/docker/pulls/danielkvist/beagle.svg?maxAge=604800)](https://hub.docker.com/r/danielkvist/beagle/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
 ```text
             __
  \,--------/_/'--o  	Use beagle with
