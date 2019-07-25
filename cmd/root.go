@@ -19,6 +19,7 @@ var (
 	agent      string
 	csvFile    string
 	debug      bool
+	disclaimer bool
 	goroutines int
 	proxy      string
 	timeout    time.Duration
@@ -30,6 +31,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&agent, "agent", "a", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0", "user agent")
 	rootCmd.PersistentFlags().StringVar(&csvFile, "csv", "./urls.csv", ".csv file with the URLs to parse and check")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "prints error messages")
+	rootCmd.PersistentFlags().BoolVar(&disclaimer, "disclaimer", true, "disables disclaimer")
 	rootCmd.PersistentFlags().IntVarP(&goroutines, "goroutines", "g", 1, "number of goroutines")
 	rootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 3*time.Second, "max time to wait for a response")
@@ -41,6 +43,10 @@ var rootCmd = &cobra.Command{
 	Use:   "beagle",
 	Short: "",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if disclaimer {
+			printDisclaimer()
+		}
+
 		siteList, err := sites.Parse(csvFile)
 		if err != nil {
 			return err
@@ -94,6 +100,17 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func printDisclaimer() {
+	beagle := `	    __
+ \,--------/_/'--o  	Use beagle with
+ /_    ___    /~"   	responsability.
+  /_/_/  /_/_/
+^^^^^^^^^^^^^^^^^^
+`
+
+	fmt.Println(beagle)
 }
 
 func check(c *http.Client, url string, agent string) (string, int, error) {
