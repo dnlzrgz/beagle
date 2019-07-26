@@ -105,7 +105,7 @@ func Execute() {
 func printDisclaimer() {
 	beagle := `	    __
  \,--------/_/'--o  	Use beagle with
- /_    ___    /~"   	responsability.
+ /_    ___    /~"   	responsibility.
   /_/_/  /_/_/
 ^^^^^^^^^^^^^^^^^^
 `
