@@ -33,7 +33,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "prints error messages")
 	rootCmd.PersistentFlags().BoolVar(&disclaimer, "disclaimer", true, "disables disclaimer")
 	rootCmd.PersistentFlags().IntVarP(&goroutines, "goroutines", "g", 1, "number of goroutines")
-	rootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "")
+	rootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "proxy URL")
 	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 3*time.Second, "max time to wait for a response")
 	rootCmd.PersistentFlags().StringVarP(&user, "user", "u", "me", "username you want to search for")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enables verbose mode")
