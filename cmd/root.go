@@ -41,7 +41,7 @@ func init() {
 
 var rootCmd = &cobra.Command{
 	Use:   "beagle",
-	Short: "",
+	Short: "beagle is simple Go CLI to search for an especific username accross the Internet.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if disclaimer {
 			printDisclaimer()
