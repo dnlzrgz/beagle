@@ -152,7 +152,7 @@ func readAndParseCSV(r *csv.Reader, user string) ([]*site, error) {
 }
 
 func makeRequest(c *http.Client, url string, agent string) (string, int, error) {
-	req, err := http.NewRequest(http.MethodHead, url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return "", 0, err
 	}
