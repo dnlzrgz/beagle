@@ -1,7 +1,10 @@
 package main
 
-import "github.com/danielkvist/beagle/cmd"
+import (
+	"github.com/danielkvist/beagle/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	root := cmd.Root()
+	root.Execute()
 }

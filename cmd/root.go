@@ -1,108 +1,120 @@
 package cmd
 
 import (
+	"bufio"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/danielkvist/beagle/client"
-	"github.com/danielkvist/beagle/logger"
-	"github.com/danielkvist/beagle/sites"
 
 	"github.com/spf13/cobra"
 )
 
-var (
-	agent      string
-	csvFile    string
-	debug      bool
-	disclaimer bool
-	goroutines int
-	proxy      string
-	timeout    time.Duration
-	user       string
-	verbose    bool
-)
-
-func init() {
-	rootCmd.PersistentFlags().StringVarP(&agent, "agent", "a", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0", "user agent")
-	rootCmd.PersistentFlags().StringVar(&csvFile, "csv", "./urls.csv", ".csv file with the URLs to parse and check")
-	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "prints error messages")
-	rootCmd.PersistentFlags().BoolVar(&disclaimer, "disclaimer", true, "disables disclaimer")
-	rootCmd.PersistentFlags().IntVarP(&goroutines, "goroutines", "g", 1, "number of goroutines")
-	rootCmd.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "proxy URL")
-	rootCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 3*time.Second, "max time to wait for a response")
-	rootCmd.PersistentFlags().StringVarP(&user, "user", "u", "me", "username you want to search for")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enables verbose mode")
+type site struct {
+	name    string
+	mainURL string
+	userURL string
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "beagle",
-	Short: "beagle is simple Go CLI to search for an especific username accross the Internet.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if disclaimer {
-			printDisclaimer()
-		}
+func Root() *cobra.Command {
+	var (
+		agent      string
+		debug      bool
+		file       string
+		goroutines int
+		proxy      string
+		timeout    time.Duration
+		user       string
+		verbose    bool
+	)
 
-		siteList, err := sites.Parse(csvFile)
-		if err != nil {
-			return err
-		}
+	root := &cobra.Command{
+		Use:     "beagle",
+		Short:   "beagle is simple Go CLI to search for an especific username accross the Internet.",
+		Example: "beagle -g 10 -t 1s -u me -v",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := client.New(client.WithTimeout(timeout), client.WithProxy(proxy))
+			if err != nil {
+				return fmt.Errorf("while creating a new http.Client: %v", err)
+			}
 
-		if len(siteList) == 0 {
-			return fmt.Errorf(".csv file %q is empty or does not contains valid URLs", csvFile)
-		}
+			f, err := os.Open(file)
+			if err != nil {
+				return fmt.Errorf("while opening file %q: %v", file, err)
+			}
 
-		c, err := client.New(client.WithTimeout(timeout), client.WithProxy(proxy))
-		if err != nil {
-			return fmt.Errorf("while creating a new http.Client to make the requests: %v", err)
-		}
+			r := csv.NewReader(bufio.NewReader(f))
+			sites, err := readAndParseCSV(r, user)
+			if err != nil {
+				return fmt.Errorf("while reading file %q: %v", file, err)
+			}
 
-		l := logger.New(os.Stdout, goroutines)
-		sema := make(chan struct{}, goroutines)
-		var wg sync.WaitGroup
+			if len(sites) == 0 {
+				return fmt.Errorf("csv file %q is empty or is not valid", file)
+			}
 
-		for _, s := range siteList {
-			wg.Add(1)
-			sema <- struct{}{}
+			sema := make(chan struct{}, goroutines)
+			var wg sync.WaitGroup
 
-			go func(site *sites.Site) {
-				defer func() {
-					<-sema
-					wg.Done()
-				}()
+			disclaimer()
 
-				site.ReplaceURL("$", user)
-				_, statusCode, err := check(c, site.URL, agent)
-				if err != nil && debug {
-					log.Printf("while checking %q (%q): %v", site.Name, site.URL, err)
+			for _, s := range sites {
+				if s == nil {
+					continue
 				}
 
-				if !verbose && statusCode != http.StatusOK {
-					return
-				}
+				wg.Add(1)
+				sema <- struct{}{}
 
-				l.Println(formatMsg(site.Name, site.URL, statusCode))
-			}(s)
-		}
+				go func(s *site) {
+					defer func() {
+						<-sema
+						wg.Done()
+					}()
 
-		wg.Wait()
-		l.Stop()
+					_, statusCode, err := makeRequest(c, s.userURL, agent)
+					if err != nil && debug {
+						log.Println(err.Error())
+						return
+					}
 
-		return nil
-	},
-}
+					if statusCode != http.StatusOK {
+						if verbose {
+							log.Println(fmt.Sprintf("[-] %s NOT FOUND", s.mainURL))
+						}
+						return
+					}
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+					log.Println(fmt.Sprintf("[+] %s", s.mainURL))
+				}(s)
+			}
+
+			wg.Wait()
+			return nil
+		},
+		SilenceUsage: true,
 	}
+
+	root.PersistentFlags().StringVarP(&agent, "agent", "a", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0", "user agent")
+	root.PersistentFlags().BoolVar(&debug, "debug", false, "prints errors messages")
+	root.PersistentFlags().StringVarP(&file, "file", "f", "./urls.csv", ".csv file with the URLs to check")
+	root.PersistentFlags().IntVarP(&goroutines, "goroutines", "g", 1, "number of goroutines")
+	root.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "proxy URL")
+	root.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 3*time.Second, "max time to wait for a response from a site")
+	root.PersistentFlags().StringVarP(&user, "user", "u", "me", "username you want to search for")
+	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "prints all the results")
+
+	return root
 }
 
-func printDisclaimer() {
+func disclaimer() {
 	beagle := `	    __
  \,--------/_/'--o  	Use beagle with
  /_    ___    /~"   	responsibility.
@@ -113,8 +125,34 @@ func printDisclaimer() {
 	fmt.Println(beagle)
 }
 
-func check(c *http.Client, url string, agent string) (string, int, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+func readAndParseCSV(r *csv.Reader, user string) ([]*site, error) {
+	sites := make([]*site, 1)
+	for {
+		line, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+
+		if len(line) != 3 {
+			return nil, fmt.Errorf("line %v has wrong number of fields", line)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		sites = append(sites, &site{
+			name:    line[0],
+			mainURL: replaceURL(line[1], user),
+			userURL: replaceURL(line[2], user),
+		})
+	}
+
+	return sites, nil
+}
+
+func makeRequest(c *http.Client, url string, agent string) (string, int, error) {
+	req, err := http.NewRequest(http.MethodHead, url, nil)
 	if err != nil {
 		return "", 0, err
 	}
@@ -128,9 +166,6 @@ func check(c *http.Client, url string, agent string) (string, int, error) {
 	return resp.Status, resp.StatusCode, nil
 }
 
-func formatMsg(name string, url string, status int) string {
-	if status != http.StatusOK {
-		return fmt.Sprintf("NO %s %s", name, url)
-	}
-	return fmt.Sprintf("OK %s %s", name, url)
+func replaceURL(s, new string) string {
+	return strings.Replace(s, "$", new, 1)
 }
