@@ -1,4 +1,4 @@
-// Package client blabla
+// Package client provides utilities to create easily new http.Client.
 package client
 
 import (
@@ -43,7 +43,7 @@ func WithProxy(proxy string) Option {
 	}
 }
 
-// New returns a new *http.Client or a error after applying
+// New returns a new *http.Client or an error after applying
 // the received Options.
 func New(opts ...Option) (*http.Client, error) {
 	c := &http.Client{}
