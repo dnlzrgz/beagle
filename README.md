@@ -7,20 +7,20 @@
 
 ```text
             __
- \,--------/_/'--o  	Use beagle with
- /_    ___    /~"   	responsibility.
+ \,--------/_/'--o    Use beagle with
+ /_    ___    /~"     responsibility.
   /_/_/  /_/_/
 ^^^^^^^^^^^^^^^^^^
 ```
 
-beagle is simple Go cli to search for an especific username accross the Internet.
+Beagle is simple Go cli to search for an especific username accross the Internet.
 
-> beagle is a project inspired by [Sherlock](https://github.com/sherlock-project/sherlock).
+> Beagle is a project inspired by [Sherlock](https://github.com/sherlock-project/sherlock).
 
 ## Example
 
 ```bash
-beagle -g 4 -v -u mario
+beagle -g 10 -t 1s -u me -v
 ```
 
 ## Install
@@ -51,9 +51,6 @@ go install
 
 ```bash
 docker image pull danielkvist/beagle
-
-# And
-docker container run danielkvist/beagle -g 4 -v -u mario
 ```
 
 > Note that the image danielkvist/beagle uses the urls.csv file from this repository. So it is not a valid option if you want to customize the URLs that beagle is gonna to use.
@@ -69,20 +66,24 @@ docker image build -t beagle .
 
 ```text
 $ beagle --help
+beagle is simple Go CLI to search for an especific username accross the Internet.
+
 Usage:
   beagle [flags]
 
+Examples:
+beagle -g 10 -t 1s -u me -v
+
 Flags:
   -a, --agent string       user agent (default "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0")
-      --csv string         .csv file with the URLs to parse and check (default "./urls.csv")
-      --debug              prints error messages
-      --disclaimer         disables disclaimer (default true)
+      --debug              prints errors messages
+  -f, --file string        .csv file with the URLs to check (default "./urls.csv")
   -g, --goroutines int     number of goroutines (default 1)
   -h, --help               help for beagle
-  -p, --proxy string
-  -t, --timeout duration   max time to wait for a response (default 3s)
+  -p, --proxy string       proxy URL
+  -t, --timeout duration   max time to wait for a response from a site (default 3s)
   -u, --user string        username you want to search for (default "me")
-  -v, --verbose            enables verbose mode
+  -v, --verbose            prints all the results
 ```
 
 ## URLs .csv file
@@ -92,25 +93,23 @@ The [urls.csv](https://github.com/danielkvist/beagle/blob/master/urls.csv) file 
 The format of the ```.csv``` file, if you do not want to use the one provided by this repository must have the following structure:
 
 ```csv
-name, url
+name, mainURL, userURL
 ```
 
 The URL must contain a ```$``` where the username should go, for example:
 
 ```csv
-instagram,https://instagram.com/$
-devianart,https://$.devianart.com
+instagram,https://instagram.com/$,https://instagrma.com/$
+devianart,https://$.devianart.com,https://$.devianart.com
 ```
 
 ## False positives
 
-Some sites return an HTTP status code ```200 OK``` even if the user had not been found or doesn't exist. This causes beagle to report that the user has been found even though this has not been the case.
+Some sites return an HTTP status code ```200 OK``` even if the user had not been found or doesn't exist. This causes Beagle to report that the user has been found even though this has not been the case.
 
-> In my tests these false positives are not too common to be a serious problem.
+## Use Beagle with responsability
 
-## Use beagle with responsability
-
-beagle is a tool whose use I am not responsible for. And that has been built for the sole purpose of learning more about Go.
+Beagle is a tool whose use I am not responsible for. And that has been built for the sole purpose of learning more about Go.
 
 ## Help is always welcome
 
