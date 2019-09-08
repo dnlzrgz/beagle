@@ -1,3 +1,4 @@
+// Package cmd exports a function to create a cobra command.
 package cmd
 
 import (
@@ -23,6 +24,7 @@ type site struct {
 	userURL string
 }
 
+// Root returns a *cobra.Command.
 func Root() *cobra.Command {
 	var (
 		agent      string
@@ -37,7 +39,7 @@ func Root() *cobra.Command {
 
 	root := &cobra.Command{
 		Use:     "beagle",
-		Short:   "beagle is simple Go CLI to search for an especific username accross the Internet.",
+		Short:   "Beagle is a Go CLI to search for an especific username accross the Internet.",
 		Example: "beagle -g 10 -t 1s -u me -v",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := client.New(client.WithTimeout(timeout), client.WithProxy(proxy))
@@ -60,11 +62,17 @@ func Root() *cobra.Command {
 				return fmt.Errorf("csv file %q is empty or is not valid", file)
 			}
 
+			results := make(chan string, goroutines)
 			sema := make(chan struct{}, goroutines)
 			var wg sync.WaitGroup
 
-			disclaimer()
+			go func() {
+				for msg := range results {
+					log.Println(msg)
+				}
+			}()
 
+			disclaimer()
 			for _, s := range sites {
 				if s == nil {
 					continue
@@ -73,45 +81,48 @@ func Root() *cobra.Command {
 				wg.Add(1)
 				sema <- struct{}{}
 
-				go func(s *site) {
-					defer func() {
-						<-sema
-						wg.Done()
-					}()
-
-					_, statusCode, err := makeRequest(c, s.userURL, agent)
-					if err != nil && debug {
-						log.Println(err.Error())
-						return
-					}
-
-					if statusCode != http.StatusOK {
-						if verbose {
-							log.Println(fmt.Sprintf("[-] %s NOT FOUND", s.mainURL))
-						}
-						return
-					}
-
-					log.Println(fmt.Sprintf("[+] %s", s.mainURL))
-				}(s)
+				go check(s, c, agent, debug, verbose, results, sema, &wg)
 			}
 
 			wg.Wait()
+			close(results)
 			return nil
 		},
 		SilenceUsage: true,
 	}
 
-	root.PersistentFlags().StringVarP(&agent, "agent", "a", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0", "user agent")
-	root.PersistentFlags().BoolVar(&debug, "debug", false, "prints errors messages")
-	root.PersistentFlags().StringVarP(&file, "file", "f", "./urls.csv", ".csv file with the URLs to check")
-	root.PersistentFlags().IntVarP(&goroutines, "goroutines", "g", 1, "number of goroutines")
-	root.PersistentFlags().StringVarP(&proxy, "proxy", "p", "", "proxy URL")
-	root.PersistentFlags().DurationVarP(&timeout, "timeout", "t", 3*time.Second, "max time to wait for a response from a site")
-	root.PersistentFlags().StringVarP(&user, "user", "u", "me", "username you want to search for")
-	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "prints all the results")
+	root.Flags().StringVarP(&agent, "agent", "a", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0", "user agent")
+	root.Flags().BoolVar(&debug, "debug", false, "prints errors messages")
+	root.Flags().StringVarP(&file, "file", "f", "./urls.csv", ".csv file with the URLs to check")
+	root.Flags().IntVarP(&goroutines, "goroutines", "g", 1, "number of goroutines")
+	root.Flags().StringVarP(&proxy, "proxy", "p", "", "proxy URL")
+	root.Flags().DurationVarP(&timeout, "timeout", "t", 3*time.Second, "max time to wait for a response from a site")
+	root.Flags().StringVarP(&user, "user", "u", "me", "username you want to search for")
+	root.Flags().BoolVarP(&verbose, "verbose", "v", false, "prints all the results")
 
 	return root
+}
+
+func check(s *site, c *http.Client, a string, d bool, v bool, out chan<- string, sema <-chan struct{}, wg *sync.WaitGroup) {
+	defer func() {
+		<-sema
+		wg.Done()
+	}()
+
+	statusCode, err := makeRequest(c, s.userURL, a)
+	if err != nil && d {
+		out <- err.Error()
+		return
+	}
+
+	if statusCode != http.StatusOK {
+		if v {
+			out <- fmt.Sprintf("[-] %s NOT FOUND", s.mainURL)
+		}
+		return
+	}
+
+	out <- fmt.Sprintf("[+] %s", s.mainURL)
 }
 
 func disclaimer() {
@@ -151,19 +162,19 @@ func readAndParseCSV(r *csv.Reader, user string) ([]*site, error) {
 	return sites, nil
 }
 
-func makeRequest(c *http.Client, url string, agent string) (string, int, error) {
+func makeRequest(c *http.Client, url string, agent string) (int, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return "", 0, err
+		return 0, err
 	}
 	req.Header.Set("User-Agent", agent)
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return "", 0, err
+		return 0, err
 	}
 
-	return resp.Status, resp.StatusCode, nil
+	return resp.StatusCode, nil
 }
 
 func replaceURL(s, new string) string {
