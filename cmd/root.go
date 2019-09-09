@@ -39,7 +39,7 @@ func Root() *cobra.Command {
 
 	root := &cobra.Command{
 		Use:     "beagle",
-		Short:   "Beagle is a CLI writen in Go to search for an especific username accross the Internet.",
+		Short:   "Beagle is a CLI written in Go to search for an specific username across the Internet.",
 		Example: "beagle -g 10 -t 1s -u me -v",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := client.New(client.WithTimeout(timeout), client.WithProxy(proxy))

@@ -14,7 +14,7 @@
 ^^^^^^^^^^^^^^^^^^
 ```
 
-Beagle is a CLI writen in Go to search for an especific username accross the Internet.
+Beagle is a CLI written in Go to search for an specific username across the Internet.
 
 > Beagle is a project inspired by [Sherlock](https://github.com/sherlock-project/sherlock).
 
@@ -67,7 +67,7 @@ docker image build -t beagle .
 
 ```text
 $ beagle --help
-Beagle is a CLI writen in Go to search for an especific username accross the Internet.
+Beagle is a CLI written in Go to search for an specific username across the Internet.
 
 Usage:
   beagle [flags]
