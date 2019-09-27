@@ -1,10 +1,14 @@
 package main
 
 import (
+	"log"
+
 	"github.com/danielkvist/beagle/cmd"
 )
 
 func main() {
 	root := cmd.Root()
-	root.Execute()
+	if err := root.Execute(); err != nil {
+		log.Fatalf("error while executing the root command: %v", err)
+	}
 }
