@@ -77,10 +77,6 @@ func Root() *cobra.Command {
 
 			disclaimer()
 			for _, s := range sites {
-				if s == nil {
-					continue
-				}
-
 				wg.Add(1)
 				sema <- struct{}{}
 
