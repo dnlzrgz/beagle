@@ -66,6 +66,9 @@ func Root() *cobra.Command {
 			sema := make(chan struct{}, goroutines)
 			var wg sync.WaitGroup
 
+			defer close(results)
+			defer close(sema)
+
 			go func() {
 				for msg := range results {
 					log.Println(msg)
@@ -85,7 +88,6 @@ func Root() *cobra.Command {
 			}
 
 			wg.Wait()
-			close(results)
 			return nil
 		},
 		SilenceUsage: true,
@@ -103,26 +105,26 @@ func Root() *cobra.Command {
 	return root
 }
 
-func check(s *site, c *http.Client, a string, d bool, v bool, out chan<- string, sema <-chan struct{}, wg *sync.WaitGroup) {
+func check(site *site, c *http.Client, agent string, debug bool, verbose bool, out chan<- string, sema <-chan struct{}, wg *sync.WaitGroup) {
 	defer func() {
 		<-sema
 		wg.Done()
 	}()
 
-	statusCode, err := makeRequest(c, s.userURL, a)
-	if err != nil && d {
+	statusCode, err := makeRequest(c, site.userURL, agent)
+	if err != nil && debug {
 		out <- err.Error()
 		return
 	}
 
 	if statusCode != http.StatusOK {
-		if v {
-			out <- fmt.Sprintf("[-] %s NOT FOUND", s.mainURL)
+		if verbose {
+			out <- fmt.Sprintf("[-] %s NOT FOUND", site.mainURL)
 		}
 		return
 	}
 
-	out <- fmt.Sprintf("[+] %s", s.mainURL)
+	out <- fmt.Sprintf("[+] %s", site.mainURL)
 }
 
 func disclaimer() {
