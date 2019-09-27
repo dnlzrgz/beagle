@@ -21,8 +21,8 @@ func TestReadAndParseCSV(t *testing.T) {
 		t.Fatalf("while reading and parsing fake .csv: %v", err)
 	}
 
-	if len(sites) != i+1 {
-		t.Fatalf("expected sites to have a length of %v. got=%v", i+1, len(sites))
+	if len(sites) != i {
+		t.Fatalf("expected sites to have a length of %v. got=%v", i, len(sites))
 	}
 }
 
