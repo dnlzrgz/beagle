@@ -137,7 +137,7 @@ func disclaimer() {
 }
 
 func readAndParseCSV(r *csv.Reader, user string) ([]*site, error) {
-	sites := make([]*site, 1)
+	sites := []*site{}
 	for {
 		line, err := r.Read()
 		if err == io.EOF {
